@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../providers/app_state.dart';
+import '../theme/colors.dart';
+import 'schedule_screen.dart';
+import 'assignments_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -12,7 +18,6 @@ class DashboardScreen extends StatelessWidget {
     final List<Map<String, String>> todaysClasses = [
       {'title': 'Programming in C#', 'time': '9:30 AM - 11:00 AM'},
       {
-        'title': 'Mobile Application Development',
         'time': '11:00 AM - 12:30 PM'
       },
       {'title': 'VIS Immersion Skills', 'time': '2:00 PM - 4:00 PM'},
