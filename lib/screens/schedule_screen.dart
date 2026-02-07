@@ -7,13 +7,6 @@ import '../theme/colors.dart';
 import '../utils/string_extensions.dart';
 
 /// Displays the list of scheduled academic sessions with weekly view
-/// 
-/// Features:
-/// - Weekly filtering of sessions (current week by default)
-/// - Swipe-to-delete functionality with confirmation
-/// - Attendance tracking with toggle buttons
-/// - Session editing capability
-/// - Grouped display by date for better organization
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
 
