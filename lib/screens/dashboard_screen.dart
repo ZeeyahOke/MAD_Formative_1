@@ -254,7 +254,7 @@ class DashboardScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                          Text(
-                          "Due Next 7 Days",
+                          "Due Within 7 Days",
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
@@ -271,34 +271,84 @@ class DashboardScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
 
                     if (upcomingAssignments.isEmpty)
                       const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text("No upcoming assignments", style: TextStyle(color: Colors.grey)),
+                        padding: EdgeInsets.symmetric(vertical: 24.0),
+                        child: Center(
+                          child: Text(
+                            "No immediate deadlines.\nGood job staying on top!",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
                       ),
 
-                    ...upcomingAssignments.map((a) => Container(
-                      margin: const EdgeInsets.only(bottom: 8),
+                    ...upcomingAssignments.map((a) {
+                      final daysLeft = a.dueDate.difference(DateTime.now()).inDays;
+                      String dueText = 'Due ${DateFormat('MMM d').format(a.dueDate)}';
+                       if (daysLeft < 0) {
+                         dueText = 'Overdue';
+                       } else if (daysLeft == 0) {
+                         dueText = 'Due Today';
+                       } else if (daysLeft == 1) {
+                         dueText = 'Due Tomorrow';
+                       } else {
+                         dueText = 'Due in $daysLeft days';
+                       }
+
+                      return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                         boxShadow: [
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0,2))
+                          ],
+                      ),
                       child: ListTile(
-                        tileColor: AppColors.backgroundLight,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        leading: const Icon(Icons.assignment_outlined, color: AppColors.primaryBlue),
-                        title: Text(a.title, style: const TextStyle(fontWeight: FontWeight.w500)),
-                        subtitle: Text(
-                          'Due ${DateFormat('MMM d').format(a.dueDate)} • ${a.courseName}',
-                          style: const TextStyle(fontSize: 12),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        leading: CircleAvatar(
+                          backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.1),
+                          child: const Icon(Icons.assignment_outlined, color: AppColors.primaryBlue),
+                        ),
+                        title: Text(
+                          a.title, 
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600, 
+                            decoration: a.isCompleted ? TextDecoration.lineThrough : null,
+                            color: a.isCompleted ? Colors.grey : Colors.black87,
+                          ),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            Text(a.courseName, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                            const SizedBox(height: 2),
+                            Text(
+                              dueText,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: daysLeft <= 1 ? AppColors.danger : AppColors.warning,
+                              ),
+                            ),
+                          ],
                         ),
                         trailing: Checkbox(
                           value: a.isCompleted,
+                          activeColor: AppColors.primaryBlue,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                           onChanged: (bool? value) {
                             appState.toggleAssignmentCompletion(a.id);
                           },
-                          activeColor: AppColors.primaryBlue,
                         ),
                       ),
-                    )),
+                    );
+                    }),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),

@@ -259,14 +259,24 @@ class AppState with ChangeNotifier {
   }
 
   double getAttendancePercentage() {
-    // Determine which sessions to count
-    // If filtering by course, we ideally need to know which session belongs to which course.
-    // Since Session model doesn't have courseName, simplistic approach:
-    // We can't easily filter attendance by course without schema change.
-    // For now, return global attendance or random variation if filter is on.
+    // Filter sessions first based on the active course filter
+    final filteredSessions = _sessions.where((s) {
+      if (_filteredCourse != null && _filteredCourse != 'All Selected Courses') {
+         if (s.courseName != null) {
+             if (s.courseName != _filteredCourse) return false;
+         } else {
+             // Fallback: strict text match if courseName is missing
+             if (!s.title.contains(_filteredCourse!) && !s.location.contains(_filteredCourse!)) return false;
+         }
+      }
+      return true;
+    }).toList();
+
+    if (filteredSessions.isEmpty) return 100.0; // Default to 100% if no sessions found (e.g., start of term)
     
-    if (_sessions.isEmpty) return 100.0;
-    final pastSessions = _sessions.where((s) => s.endTime.isBefore(DateTime.now())).toList();
+    // Only count sessions that have already occurred (in the past)
+    final pastSessions = filteredSessions.where((s) => s.endTime.isBefore(DateTime.now())).toList();
+    
     if (pastSessions.isEmpty) return 100.0;
     
     final presentCount = pastSessions.where((s) => s.isPresent).length;
