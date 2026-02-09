@@ -19,10 +19,10 @@ class DashboardScreen extends StatelessWidget {
     // Map metrics to real data or sensible dummies
     // Box 1: Active Projects -> Total pending assignments
     final activeProjects = pendingToDos.toString();
-    // Box 2: Code Fastocirs -> Maybe completed assignments this week? Or just a static/random number since it's unclear
-    const codeFastocirs = "7"; 
+    // Box 2: Attendance Percentage
+    final attendanceString = "${attendancePercent.toStringAsFixed(0)}%"; 
     // Box 3: Upcoming Aganos -> Assignments due today/tomorrow?
-    final upcomingAganos = upcomingAssignments.length.toString();
+    final upcomingCount = upcomingAssignments.length.toString();
 
     return Scaffold(
       backgroundColor: AppColors.primaryBlue,
@@ -106,11 +106,11 @@ class DashboardScreen extends StatelessWidget {
                   // 3 Stats Boxes
                   Row(
                     children: [
-                      _buildMetricBox(activeProjects, 'Active\nProjects'),
+                      _buildMetricBox(activeProjects, 'Pending\nTasks'),
                       const SizedBox(width: 8),
-                      _buildMetricBox(codeFastocirs, 'Code\nfastocirs'), 
+                      _buildMetricBox(attendanceString, 'Overall\nAttendance'), 
                       const SizedBox(width: 8),
-                      _buildMetricBox(upcomingAganos, 'Upcoming\nAganos'), 
+                      _buildMetricBox(upcomingCount, 'Due\nSoon'), 
                     ],
                   ),
                 ],
