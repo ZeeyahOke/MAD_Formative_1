@@ -88,12 +88,17 @@ class DashboardScreen extends StatelessWidget {
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           dropdownColor: AppColors.primaryBlue,
-                          value: appState.filteredCourse ?? 'All Selected Courses',
+                          value: appState.filteredCourse,
+                          hint: const Text("All Selected Courses", style: TextStyle(color: Colors.white)),
                           icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
                           isExpanded: false,
                           style: const TextStyle(color: Colors.white, fontSize: 13),
-                          items: ['All Selected Courses', ...appState.selectedCourses]
-                              .map((String value) {
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null, 
+                              child: Text('All Selected Courses', style: TextStyle(color: Colors.white))
+                            ),
+                            ...appState.selectedCourses.map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
                               child: ConstrainedBox(
@@ -105,11 +110,9 @@ class DashboardScreen extends StatelessWidget {
                                 ),
                               ),
                             );
-                          }).toList(),
+                          }).toList()], 
                           onChanged: (newValue) {
-                            if (newValue != null) {
-                              appState.setCourseFilter(newValue);
-                            }
+                             appState.setCourseFilter(newValue);
                           },
                         ),
                       ),
@@ -235,17 +238,42 @@ class DashboardScreen extends StatelessWidget {
                         child: Text("No classes scheduled today", style: TextStyle(color: Colors.grey)),
                       ),
                     
-                    ...todaySessions.map((s) => Container(
+                    ...todaySessions.map((s) {
+                      final isUpcoming = s.startTime.isAfter(DateTime.now());
+                      return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         tileColor: AppColors.backgroundLight,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        title: Text(s.title, style: const TextStyle(fontWeight: FontWeight.w500)),
-                        subtitle: Text('${DateFormat('HH:mm').format(s.startTime)} - ${s.location}'),
+                        title: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (isUpcoming) 
+                               Container(
+                                 margin: const EdgeInsets.only(bottom: 4),
+                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                 decoration: BoxDecoration(
+                                   color: AppColors.accentYellow.withValues(alpha: 0.3),
+                                   borderRadius: BorderRadius.circular(4),
+                                 ),
+                                 child: const Text('UPCOMING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.warning)),
+                               ),
+                            Text(s.title, style: const TextStyle(fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${DateFormat('HH:mm').format(s.startTime)} - ${s.location}'),
+                            if (s.courseName != null)
+                             Text(s.courseName!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.primaryBlue)),
+                          ],
+                        ),
                         trailing: Icon(s.isPresent ? Icons.check_circle : Icons.circle_outlined, 
                           color: s.isPresent ? AppColors.success : Colors.grey),
                       ),
-                    )),
+                    );
+                    }),
                     
                     const SizedBox(height: 24),
 
