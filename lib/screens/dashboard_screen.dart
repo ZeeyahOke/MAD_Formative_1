@@ -246,6 +246,59 @@ class DashboardScreen extends StatelessWidget {
                           color: s.isPresent ? AppColors.success : Colors.grey),
                       ),
                     )),
+                    
+                    const SizedBox(height: 24),
+
+                    // Assignments Due Next 7 Days Section
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                         Text(
+                          "Due Next 7 Days",
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                               context,
+                               MaterialPageRoute(builder: (context) => const AssignmentsScreen()),
+                             );
+                          },
+                          child: const Text('See All'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    if (upcomingAssignments.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text("No upcoming assignments", style: TextStyle(color: Colors.grey)),
+                      ),
+
+                    ...upcomingAssignments.map((a) => Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        tileColor: AppColors.backgroundLight,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        leading: const Icon(Icons.assignment_outlined, color: AppColors.primaryBlue),
+                        title: Text(a.title, style: const TextStyle(fontWeight: FontWeight.w500)),
+                        subtitle: Text(
+                          'Due ${DateFormat('MMM d').format(a.dueDate)} • ${a.courseName}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: Checkbox(
+                          value: a.isCompleted,
+                          onChanged: (bool? value) {
+                            appState.toggleAssignmentCompletion(a.id);
+                          },
+                          activeColor: AppColors.primaryBlue,
+                        ),
+                      ),
+                    )),
                   ],
                 ),
               ),
