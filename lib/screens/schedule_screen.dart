@@ -799,7 +799,7 @@ class _SessionFormState extends State<SessionForm> {
 
               // Session type dropdown
               DropdownButtonFormField<SessionType>(
-                value: _type,
+                initialvalue: _type,
                 decoration: const InputDecoration(
                   labelText: 'Session Type *',
                   prefixIcon: Icon(Icons.category),
