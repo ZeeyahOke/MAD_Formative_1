@@ -126,9 +126,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: AppColors.primaryBlue.withOpacity(0.1),
+        color: AppColors.primaryBlue.withValues(alpha:0.1),
         border: Border(
-          bottom: BorderSide(color: AppColors.primaryBlue.withOpacity(0.2)),
+          bottom: BorderSide(color: AppColors.primaryBlue.withValues(0.2)),
         ),
       ),
       child: Row(
@@ -493,10 +493,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ToggleButtons(
           isSelected: [session.isPresent, !session.isPresent],
           onPressed: (index) {
-            // index 0 = Present, index 1 = Absent
-            final newStatus = index == 0;
+            final newStatus = index == 0; // indicate Present for index 0
             if (session.isPresent != newStatus) {
-              appState.toggleAttendance(session.id);
+              appState.toggleAttendance(session.id);// then index 1 = Absent
             }
           },
           borderRadius: BorderRadius.circular(8),
