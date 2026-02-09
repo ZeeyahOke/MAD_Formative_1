@@ -7,13 +7,6 @@ import '../theme/colors.dart';
 import '../utils/string_extensions.dart';
 
 /// Displays the list of scheduled academic sessions with weekly view
-/// 
-/// Features:
-/// - Weekly filtering of sessions (current week by default)
-/// - Swipe-to-delete functionality with confirmation
-/// - Attendance tracking with toggle buttons
-/// - Session editing capability
-/// - Grouped display by date for better organization
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
 
@@ -133,9 +126,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: AppColors.primaryBlue.withOpacity(0.1),
+        color: AppColors.primaryBlue.withValues(alpha:0.1),
         border: Border(
-          bottom: BorderSide(color: AppColors.primaryBlue.withOpacity(0.2)),
+          bottom: BorderSide(color: AppColors.primaryBlue.withValues(0.2)),
         ),
       ),
       child: Row(
@@ -367,8 +360,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           height: 60,
           decoration: BoxDecoration(
             color: isPast
-                ? Colors.grey.withOpacity(0.2)
-                : AppColors.primaryBlue.withOpacity(0.1),
+                ? Colors.grey.withValues(alpha: 0.2)
+                : AppColors.primaryBlue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
@@ -500,10 +493,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ToggleButtons(
           isSelected: [session.isPresent, !session.isPresent],
           onPressed: (index) {
-            // index 0 = Present, index 1 = Absent
-            final newStatus = index == 0;
+            final newStatus = index == 0; // indicate Present for index 0
             if (session.isPresent != newStatus) {
-              appState.toggleAttendance(session.id);
+              appState.toggleAttendance(session.id);// then index 1 = Absent
             }
           },
           borderRadius: BorderRadius.circular(8),
@@ -807,7 +799,7 @@ class _SessionFormState extends State<SessionForm> {
 
               // Session type dropdown
               DropdownButtonFormField<SessionType>(
-                initialValue: _type,
+                value: _type, // Use value instead of initialValue when state is managed
                 decoration: const InputDecoration(
                   labelText: 'Session Type *',
                   prefixIcon: Icon(Icons.category),
