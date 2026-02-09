@@ -360,8 +360,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           height: 60,
           decoration: BoxDecoration(
             color: isPast
-                ? Colors.grey.withOpacity(0.2)
-                : AppColors.primaryBlue.withOpacity(0.1),
+                ? Colors.grey.withValues(alpha: 0.2)
+                : AppColors.primaryBlue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
