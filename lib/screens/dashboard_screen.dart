@@ -51,7 +51,7 @@ class DashboardScreen extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -72,7 +72,7 @@ class DashboardScreen extends StatelessWidget {
                         Text(
                           "Academic Week $academicWeek",
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 14,
                           ),
                         ),
@@ -208,7 +208,7 @@ class DashboardScreen extends StatelessWidget {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0,2))
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0,2))
                           ],
                         ),
                         child: ListTile(
@@ -281,3 +281,10 @@ class DashboardScreen extends StatelessWidget {
               label,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white70, fontSize: 10),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
