@@ -109,7 +109,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      ..._courses.map((course) => _buildCourseOption(course)).toList(),
+                      ..._courses.map((course) => _buildCourseOption(course)),
                     ],
                   ),
                 ),

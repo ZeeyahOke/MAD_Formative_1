@@ -296,7 +296,7 @@ class _AssignmentFormState extends State<AssignmentForm> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: DropdownButtonFormField<PriorityLevel>(
-                    value: _priority,
+                    initialValue: _priority,
                     decoration: const InputDecoration(labelText: 'Priority'),
                     items: PriorityLevel.values.map((p) {
                       return DropdownMenuItem(
@@ -313,7 +313,7 @@ class _AssignmentFormState extends State<AssignmentForm> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<AssignmentType>(
-              value: _type,
+              initialValue: _type,
               decoration: const InputDecoration(labelText: 'Assessment Type'),
               items: [AssignmentType.formative, AssignmentType.summative].map((t) {
                 return DropdownMenuItem(

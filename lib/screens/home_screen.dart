@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import 'dashboard_screen.dart';
 import 'assignments_screen.dart';
-import 'schedule_screen.dart'; // Keep schedule screen logic but might not be in nav bar based on screenshot 5 items?
+// Keep schedule screen logic but might not be in nav bar based on screenshot 5 items?
 // Screenshot 5 items are: Dashboard, Assignments, Announcements, Risk Status?
 // Actually the screenshot shows 4 tabs in bottom nav:
 // 1. Dashboard icon

@@ -71,7 +71,7 @@ class ScheduleScreen extends StatelessWidget {
                                   ),
                                   Text(
                                     DateFormat('d').format(session.startTime),
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 20,
                                       color: AppColors.primaryBlue
@@ -285,7 +285,7 @@ class _SessionFormState extends State<SessionForm> {
               
               // Type Dropdown
               DropdownButtonFormField<SessionType>(
-                value: _type,
+                initialValue: _type,
                 decoration: const InputDecoration(labelText: 'Session Type'),
                 items: SessionType.values.map((t) {
                   return DropdownMenuItem(
