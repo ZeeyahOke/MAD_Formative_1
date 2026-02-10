@@ -41,9 +41,6 @@ This project follows a clean architecture pattern separating UI from Business Lo
 2.  **Dependencies**: Run `flutter pub get` to install required packages (`provider`, `intl`, `shared_preferences`, `uuid`).
 3.  **Run**: Connect a device or emulator and run `flutter run`.
 
-## Team and Contribution
-[Insert Link to Group Contribution Tracker Here]
-
 ## Technical Challenges & Solutions
 - **State Management**: We chose `Provider` for its simplicity and effectiveness in propagating changes (like attendance updates) across the app immediately.
 - **Persistence**: `SharedPreferences` was used for quick serialization of JSON data, allowing for a lightweight "database" without the overhead of SQLite for this scale.
