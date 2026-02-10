@@ -121,17 +121,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   height: 56,
                   child: ElevatedButton(
                     onPressed: () async {
-                      if (_emailController.text.isNotEmpty) {
-                        final appState = Provider.of<AppState>(context, listen: false);
-                        await appState.setUser(_emailController.text, _selectedCourses.toList());
-                        appState.seedSampleData(); // Populate sample data based on selection
+                      if (_emailController.text.isEmpty) {
+                         ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter your email')),
+                        );
+                        return;
+                      }
                       
+                      if (_selectedCourses.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please select at least one course')),
+                        );
+                        return;
+                      }
+
+                      // Show loading indicator or visual feedback
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Creating your profile...')),
+                      );
+
+                      final appState = Provider.of<AppState>(context, listen: false);
+                      // Pass force:true to ensure data is regenerated fresh for the new user profile
+                      await appState.setUser(_emailController.text, _selectedCourses.toList());
+                      
+                      if (context.mounted) {
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(builder: (context) => const HomeScreen()),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please enter your email')),
                         );
                       }
                     },

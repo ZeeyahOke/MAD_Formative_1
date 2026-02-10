@@ -8,7 +8,8 @@ import '../utils/string_extensions.dart';
 
 /// Displays the list of scheduled academic sessions with weekly view
 class ScheduleScreen extends StatefulWidget {
-  const ScheduleScreen({super.key});
+  final bool scrollToUpcoming;
+  const ScheduleScreen({super.key, this.scrollToUpcoming = false});
 
   @override
   State<ScheduleScreen> createState() => _ScheduleScreenState();
@@ -17,6 +18,28 @@ class ScheduleScreen extends StatefulWidget {
 class _ScheduleScreenState extends State<ScheduleScreen> {
   // Track the current week offset (0 = this week, -1 = last week, +1 = next week)
   int _weekOffset = 0;
+  final GlobalKey _upcomingKey = GlobalKey();
+  
+  @override
+  void initState() {
+    super.initState();
+    if (widget.scrollToUpcoming) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToUpcoming();
+      });
+    }
+  }
+
+  void _scrollToUpcoming() {
+    if (_upcomingKey.currentContext != null) {
+      Scrollable.ensureVisible(
+        _upcomingKey.currentContext!,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
+        alignment: 0.1, // A bit from the top
+      );
+    }
+  }
 
   /// Calculates the start date of the week based on offset
   /// Week starts on Monday
@@ -128,7 +151,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       decoration: BoxDecoration(
         color: AppColors.primaryBlue.withValues(alpha:0.1),
         border: Border(
-          bottom: BorderSide(color: AppColors.primaryBlue.withValues(0.2)),
+          bottom: BorderSide(color: AppColors.primaryBlue.withValues(alpha: 0.2)),
         ),
       ),
       child: Row(
@@ -200,33 +223,80 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       List<AcademicSession> sessions, AppState appState) {
     final groupedSessions = _groupSessionsByDate(sessions);
     final sortedDates = groupedSessions.keys.toList()..sort();
+    
+    // Find the very first upcoming session to insert the header exactly once
+    String? firstUpcomingSessionId;
+    final now = DateTime.now();
+    
+    // Flatten and sort all to find the split point
+    final allSorted = sessions.toList()..sort((a,b) => a.startTime.compareTo(b.startTime));
+    for (var s in allSorted) {
+      if (s.startTime.isAfter(now)) {
+        firstUpcomingSessionId = s.id;
+        break;
+      }
+    }
 
-    return ListView.builder(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      itemCount: sortedDates.length,
-      itemBuilder: (context, index) {
-        final dateKey = sortedDates[index];
-        final dateSessions = groupedSessions[dateKey]!;
-        final date = DateTime.parse(dateKey);
+      child: Column(
+        children: sortedDates.map((dateKey) {
+          final dateSessions = groupedSessions[dateKey]!;
+          final date = DateTime.parse(dateKey);
+  
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Date header
+              _buildDateHeader(date),
+              const SizedBox(height: 8),
+              
+              // Sessions for this date
+              ...dateSessions.map((session) {
+                 final widgets = <Widget>[];
+                 
+                 if (session.id == firstUpcomingSessionId) {
+                   widgets.add(_buildUpcomingHeader());
+                 }
+  
+                 widgets.add(_buildSessionCard(
+                    session,
+                    appState,
+                    context,
+                  ));
+                  
+                  return Column(children: widgets);
+              }),
+              
+              const SizedBox(height: 16),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Date header
-            _buildDateHeader(date),
-            const SizedBox(height: 8),
-            
-            // Sessions for this date
-            ...dateSessions.map((session) => _buildSessionCard(
-                  session,
-                  appState,
-                  context,
-                )),
-            
-            const SizedBox(height: 16),
-          ],
-        );
-      },
+  Widget _buildUpcomingHeader() {
+    return Padding(
+      key: _upcomingKey,
+      padding: const EdgeInsets.only(top: 16.0, bottom: 12.0),
+      child: Row(
+        children: [
+          const Icon(Icons.arrow_circle_up, color: AppColors.primaryBlue, size: 20),
+          const SizedBox(width: 8),
+          const Text(
+            "UPCOMING CLASSES",
+            style: TextStyle(
+              color: AppColors.primaryBlue,
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Divider(color: AppColors.primaryBlue.withOpacity(0.3), thickness: 2)),
+        ],
+      ),
     );
   }
 
@@ -278,6 +348,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   ) {
     // Check if session is in the past
     final isPast = session.endTime.isBefore(DateTime.now());
+    final isUpcoming = session.startTime.isAfter(DateTime.now());
 
     return Dismissible(
       key: Key(session.id),
@@ -326,19 +397,38 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
         );
       },
-      child: Card(
-        elevation: 2,
-        margin: const EdgeInsets.only(bottom: 12),
-        // Visual indicator for past sessions
-        color: isPast ? Colors.grey[50] : null,
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            children: [
-              _buildSessionHeader(session, context, isPast),
-              const Divider(height: 24),
-              _buildAttendanceToggle(session, appState),
-            ],
+      child: Container(
+        decoration: isUpcoming 
+            ? BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryBlue.withOpacity(0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  )
+                ],
+              )
+            : null,
+        child: Card(
+          elevation: isUpcoming ? 0 : 2, // Flat look for upcoming to use custom decoration
+          margin: const EdgeInsets.only(bottom: 12),
+          // Visual indicator for past sessions
+          color: isPast ? Colors.grey[50] : Colors.white,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: isUpcoming 
+                 ? const BorderSide(color: AppColors.primaryBlue, width: 1.5)
+                 : BorderSide.none,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              children: [
+                _buildSessionHeader(session, context, isPast),
+                const Divider(height: 24),
+                _buildAttendanceToggle(session, appState),
+              ],
+            ),
           ),
         ),
       ),
@@ -426,6 +516,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     ),
                 ],
               ),
+              if (session.courseName != null && session.courseName!.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  session.courseName!,
+                  style: TextStyle(
+                    color: isPast ? Colors.grey[500] : AppColors.primaryBlue.withValues(alpha: 0.8),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
               const SizedBox(height: 6),
               Row(
                 children: [
@@ -799,7 +900,7 @@ class _SessionFormState extends State<SessionForm> {
 
               // Session type dropdown
               DropdownButtonFormField<SessionType>(
-                value: _type, // Use value instead of initialValue when state is managed
+                initialValue: _type,
                 decoration: const InputDecoration(
                   labelText: 'Session Type *',
                   prefixIcon: Icon(Icons.category),

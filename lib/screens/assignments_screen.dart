@@ -11,21 +11,26 @@ class AssignmentsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         backgroundColor: AppColors.primaryBlue, // Dark background
         appBar: AppBar(
           title: const Text('Assignments'),
           backgroundColor: AppColors.primaryBlue,
           foregroundColor: Colors.white,
-          leading: const Icon(Icons.arrow_back), // Match screenshot
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
+          ),
           bottom: const TabBar(
             indicatorColor: AppColors.accentYellow,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white60,
             indicatorSize: TabBarIndicatorSize.tab,
+            isScrollable: true,
             tabs: [
               Tab(text: 'All'),
+              Tab(text: 'Missed'),
               Tab(text: 'Formative'),
               Tab(text: 'Summative'),
             ],
@@ -47,7 +52,7 @@ class AssignmentsScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text('Create Group Assignment', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: const Text('Create Assignment', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
             ),
@@ -59,9 +64,10 @@ class AssignmentsScreen extends StatelessWidget {
                  // The cards are white rounded rectangles.
                 child: TabBarView(
                   children: [
-                    _buildAssignmentList(context, AssignmentType.all),
-                    _buildAssignmentList(context, AssignmentType.formative),
-                    _buildAssignmentList(context, AssignmentType.summative),
+                    _buildAssignmentList(context, filterType: AssignmentType.all),
+                    _buildAssignmentList(context, showMissed: true),
+                    _buildAssignmentList(context, filterType: AssignmentType.formative),
+                    _buildAssignmentList(context, filterType: AssignmentType.summative),
                   ],
                 ),
               ),
@@ -72,25 +78,32 @@ class AssignmentsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAssignmentList(BuildContext context, AssignmentType filterType) {
+  Widget _buildAssignmentList(BuildContext context, {AssignmentType filterType = AssignmentType.all, bool showMissed = false}) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-        final allAssignments = appState.assignments;
-        
-        final assignments = filterType == AssignmentType.all 
-            ? allAssignments 
-            : allAssignments.where((a) => a.type == filterType).toList();
-        
-        // Dummy data if empty to match screenshot appearance
-        if (assignments.isEmpty && allAssignments.isEmpty) {
-           // We can render dummy cards to show the design if the list is empty
-           // But logically we should show the "No assignments" text.
-           // However user asked to "do the same design".
-           // Let's stick to functional list.
+        // Filter by Course First
+        final filter = appState.filteredCourse;
+        final isAll = filter == null || filter == 'All Selected Courses' || filter.isEmpty;
+
+        final courseFiltered = isAll
+            ? appState.assignments
+            : appState.assignments.where((a) => a.courseName == filter).toList();
+
+        // Filter by Type or Missed Status
+        List<Assignment> assignments;
+        if (showMissed) {
+          assignments = courseFiltered.where((a) => a.dueDate.isBefore(DateTime.now()) && !a.isCompleted).toList();
+        } else {
+          assignments = filterType == AssignmentType.all 
+              ? courseFiltered 
+              : courseFiltered.where((a) => a.type == filterType).toList();
         }
 
         if (assignments.isEmpty) {
-          return Center(child: Text("No ${filterType == AssignmentType.all ? '' : filterType.name} assignments.", style: const TextStyle(color: Colors.white70)));
+          final emptyText = showMissed 
+              ? "No missed assignments! Great job." 
+              : "No ${filterType == AssignmentType.all ? '' : filterType.name} assignments.";
+          return Center(child: Text(emptyText, style: const TextStyle(color: Colors.white70)));
         }
 
         return ListView.builder(
@@ -98,6 +111,8 @@ class AssignmentsScreen extends StatelessWidget {
           itemCount: assignments.length,
           itemBuilder: (context, index) {
             final assignment = assignments[index];
+            final isOverdue = assignment.dueDate.isBefore(DateTime.now()) && !assignment.isCompleted;
+            
             return Dismissible(
               key: Key(assignment.id),
               background: Container(
@@ -118,14 +133,28 @@ class AssignmentsScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
+                  border: isOverdue ? Border.all(color: AppColors.danger.withValues(alpha: 0.3), width: 1) : null,
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  leading: Transform.scale(
+                    scale: 1.2,
+                    child: Checkbox(
+                      value: assignment.isCompleted,
+                      activeColor: AppColors.primaryBlue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      onChanged: (bool? value) {
+                        appState.toggleAssignmentCompletion(assignment.id);
+                      },
+                    ),
+                  ),
                   title: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'ASSIGNMENT ${index + 1}', // Mimic "ASSIGNMENT 1" header
+                        assignment.courseName.toUpperCase(), 
                         style: const TextStyle(
                           fontSize: 10, 
                           color: Colors.grey, 
@@ -139,26 +168,53 @@ class AssignmentsScreen extends StatelessWidget {
                         style: TextStyle(
                           decoration: assignment.isCompleted ? TextDecoration.lineThrough : null,
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          fontSize: 16,
+                          color: isOverdue ? AppColors.danger : Colors.black87,
                         ),
                       ),
                     ],
                   ),
                   subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      'Due ${DateFormat('MMM d').format(assignment.dueDate)}',
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    padding: const EdgeInsets.only(top: 6.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_today, size: 14, color: isOverdue ? AppColors.danger : Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormat('MMM d').format(assignment.dueDate),
+                          style: TextStyle(
+                            color: isOverdue ? AppColors.danger : Colors.grey[800],
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                          ),
+                        ),
+                        if (isOverdue)
+                          const Text(
+                            " • Overdue",
+                             style: TextStyle(
+                              color: AppColors.danger,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ), 
+                          ),
+                      ],
                     ),
                   ),
-                  trailing: (assignment.type == AssignmentType.formative) // Mimic the "Remmedial" label look if specific type
+                  trailing: isOverdue 
                       ? Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFBE4A0), // Light yellow/beige
+                            color: AppColors.danger.withValues(alpha: 0.1), 
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: AppColors.danger, width: 1),
+                          ),
+                          child: const Text('MISSED', style: TextStyle(color: AppColors.danger, fontSize: 10, fontWeight: FontWeight.bold)),
+                        )
+                      : (assignment.type == AssignmentType.formative) 
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFBE4A0), 
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text('Remedial', style: TextStyle(color: Color(0xFF8D6E63), fontSize: 10, fontWeight: FontWeight.bold)),

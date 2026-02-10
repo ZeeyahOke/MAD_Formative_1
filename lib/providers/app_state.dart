@@ -10,12 +10,14 @@ class AppState with ChangeNotifier {
   String _username = 'Student';
   List<String> _selectedCourses = [];
   String? _filteredCourse; // Null means "All"
+  bool _isLoaded = false; // Prevent race conditions
 
   List<Assignment> get assignments => List.unmodifiable(_assignments);
   List<AcademicSession> get sessions => List.unmodifiable(_sessions);
   String get username => _username;
   List<String> get selectedCourses => List.unmodifiable(_selectedCourses);
   String? get filteredCourse => _filteredCourse;
+  bool get isLoaded => _isLoaded;
 
   void setCourseFilter(String? course) {
     _filteredCourse = course;
@@ -23,10 +25,10 @@ class AppState with ChangeNotifier {
   }
 
   AppState() {
-    _loadData();
+    _initData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _initData() async {
     final prefs = await SharedPreferences.getInstance();
     
     _username = prefs.getString('username') ?? 'Student';
@@ -34,18 +36,27 @@ class AppState with ChangeNotifier {
 
     // Load Assignments
     final String? assignmentsString = prefs.getString('assignments');
-    if (assignmentsString != null) {
-      final List<dynamic> jsonList = json.decode(assignmentsString);
-      _assignments = jsonList.map((json) => Assignment.fromJson(json)).toList();
+    if (assignmentsString != null && assignmentsString.isNotEmpty) {
+      try {
+        final List<dynamic> jsonList = json.decode(assignmentsString);
+        _assignments = jsonList.map((j) => Assignment.fromJson(j)).toList();
+      } catch (_) {
+        _assignments = [];
+      }
     }
 
     // Load Sessions
     final String? sessionsString = prefs.getString('sessions');
-    if (sessionsString != null) {
-      final List<dynamic> jsonList = json.decode(sessionsString);
-      _sessions = jsonList.map((json) => AcademicSession.fromJson(json)).toList();
+    if (sessionsString != null && sessionsString.isNotEmpty) {
+      try {
+        final List<dynamic> jsonList = json.decode(sessionsString);
+        _sessions = jsonList.map((j) => AcademicSession.fromJson(j)).toList();
+      } catch (_) {
+        _sessions = [];
+      }
     }
-    
+
+    _isLoaded = true;
     notifyListeners();
   }
 
@@ -55,75 +66,137 @@ class AppState with ChangeNotifier {
     final namePart = email.split('@').first;
     // Capitalize
     _username = namePart.isEmpty ? 'Student' : "${namePart[0].toUpperCase()}${namePart.substring(1)}";
-    _selectedCourses = courses;
+    _selectedCourses = List<String>.from(courses); // Defensive copy
+    _filteredCourse = null; // Reset filter
 
+    // Save profile to prefs FIRST
     await prefs.setString('username', _username);
     await prefs.setStringList('courses', _selectedCourses);
     
+    // Clear ALL existing data
+    _assignments = [];
+    _sessions = [];
+    await prefs.remove('assignments');
+    await prefs.remove('sessions');
+    
+    // Generate all sample data for selected courses
+    _generateAllSampleData();
+    
+    // Persist everything
+    await _saveData();
+    _isLoaded = true;
     notifyListeners();
   }
 
-  void seedSampleData() {
-    if (_assignments.isNotEmpty || _sessions.isNotEmpty) return; // Don't overwrite if data exists
-
+  /// Synchronous method — no async gaps, no race conditions
+  void _generateAllSampleData() {
     final now = DateTime.now();
-    
-    // Sample Assignments based on courses - Extensive List for Realism
-    // Linux
-    if (_selectedCourses.contains('Introduction to Linux')) {
-        _assignments.add(Assignment(title: 'Linux File Permissions', courseName: 'Introduction to Linux', dueDate: now.add(const Duration(days: 2)), priority: PriorityLevel.high));
-        _assignments.add(Assignment(title: 'Shell Scripting Basics', courseName: 'Introduction to Linux', dueDate: now.add(const Duration(days: 5)), priority: PriorityLevel.medium, type: AssignmentType.summative));
-        _assignments.add(Assignment(title: 'Vim Mastery', courseName: 'Introduction to Linux', dueDate: now.add(const Duration(days: 12)), priority: PriorityLevel.low));
-        _assignments.add(Assignment(title: 'Process Management', courseName: 'Introduction to Linux', dueDate: now.add(const Duration(days: 1)), priority: PriorityLevel.high, type: AssignmentType.summative));
-    }
-    // Python
-    if (_selectedCourses.contains('Introduction to Python Programming')) {
-        _assignments.add(Assignment(title: 'Python Functions Quiz', courseName: 'Introduction to Python Programming', dueDate: now.add(const Duration(days: 1)), priority: PriorityLevel.high, type: AssignmentType.formative));
-        _assignments.add(Assignment(title: 'Data Analysis Project', courseName: 'Introduction to Python Programming', dueDate: now.add(const Duration(days: 10)), priority: PriorityLevel.high, type: AssignmentType.summative));
-        _assignments.add(Assignment(title: 'Pandas Library Intro', courseName: 'Introduction to Python Programming', dueDate: now.add(const Duration(days: 6)), priority: PriorityLevel.medium));
-        _assignments.add(Assignment(title: 'NumPy Arrays Practice', courseName: 'Introduction to Python Programming', dueDate: now.add(const Duration(days: 3)), priority: PriorityLevel.low));
-    }
-    // Web Dev
-     if (_selectedCourses.contains('Front End Web Development')) {
-        _assignments.add(Assignment(title: 'HTML/CSS Portfolio', courseName: 'Front End Web Development', dueDate: now.add(const Duration(days: 3)), priority: PriorityLevel.medium));
-        _assignments.add(Assignment(title: 'JavaScript Basics', courseName: 'Front End Web Development', dueDate: now.add(const Duration(days: 8)), priority: PriorityLevel.low, type: AssignmentType.formative));
-        _assignments.add(Assignment(title: 'Responsive Design Lab', courseName: 'Front End Web Development', dueDate: now.add(const Duration(days: 2)), priority: PriorityLevel.high));
-    }
-    // Generic / Other
-    _assignments.add(Assignment(title: 'Leadership Reflection', courseName: 'Leadership', dueDate: now.add(const Duration(days: 4))));
-    _assignments.add(Assignment(title: 'Peer Review', courseName: 'Communication', dueDate: now.add(const Duration(days: 1))));
-    _assignments.add(Assignment(title: 'Career Plan Draft', courseName: 'Career Development', dueDate: now.add(const Duration(days: 14)), priority: PriorityLevel.low));
+    final courses = _selectedCourses;
 
-    // Sample Sessions - Populating "Today" heavily
-    // 09:00 - 10:30
-    _sessions.add(AcademicSession(title: 'Morning Standup & Goal Setting', startTime: DateTime(now.year, now.month, now.day, 9, 0), endTime: DateTime(now.year, now.month, now.day, 10, 30), type: SessionType.pslMeeting, location: 'Room 101 - Main Hub', courseName: 'Leadership'));
-    
-    // 11:00 - 12:30 (Course based or generic)
-    if (_selectedCourses.contains('Front End Web Development')) {
-       _sessions.add(AcademicSession(title: 'Web Dev Lecture: CSS Grid', startTime: DateTime(now.year, now.month, now.day, 11, 0), endTime: DateTime(now.year, now.month, now.day, 12, 30), type: SessionType.classSession, location: 'Hall A', courseName: 'Front End Web Development'));
-    } else {
-       _sessions.add(AcademicSession(title: 'Guest Lecture: Tech Ethics', startTime: DateTime(now.year, now.month, now.day, 11, 0), endTime: DateTime(now.year, now.month, now.day, 12, 30), type: SessionType.classSession, location: 'Auditorium'));
+    debugPrint('=== SEEDING DATA for courses: $courses ===');
+
+    // ===================== LINUX =====================
+    if (courses.any((c) => c.toLowerCase().contains('linux'))) {
+      const cn = 'Introduction to Linux';
+      debugPrint('Seeding Linux data...');
+
+      // 10 Assignments
+      _assignments.addAll([
+        Assignment(title: 'Linux File Permissions', courseName: cn, dueDate: now.add(const Duration(days: 2)), priority: PriorityLevel.high),
+        Assignment(title: 'Shell Scripting Basics', courseName: cn, dueDate: now.add(const Duration(days: 5)), priority: PriorityLevel.medium, type: AssignmentType.summative),
+        Assignment(title: 'Vim Mastery', courseName: cn, dueDate: now.add(const Duration(days: 12)), priority: PriorityLevel.low),
+        Assignment(title: 'Process Management', courseName: cn, dueDate: now.add(const Duration(days: 1)), priority: PriorityLevel.high, type: AssignmentType.summative),
+        Assignment(title: 'Kernel Modules', courseName: cn, dueDate: now.subtract(const Duration(days: 1)), priority: PriorityLevel.high),
+        Assignment(title: 'User Groups Setup', courseName: cn, dueDate: now.add(const Duration(days: 8)), priority: PriorityLevel.medium),
+        Assignment(title: 'SSH Configuration', courseName: cn, dueDate: now.add(const Duration(days: 15)), priority: PriorityLevel.high, type: AssignmentType.formative),
+        Assignment(title: 'Cron Job Scheduling', courseName: cn, dueDate: now.add(const Duration(days: 9)), priority: PriorityLevel.low),
+        Assignment(title: 'Disk Partitioning', courseName: cn, dueDate: now.add(const Duration(days: 18)), priority: PriorityLevel.medium, type: AssignmentType.summative),
+        Assignment(title: 'System Logs Analysis', courseName: cn, dueDate: now.subtract(const Duration(days: 4)), priority: PriorityLevel.medium),
+      ]);
+
+      // Sessions: Mon/Wed/Fri at 10:00, past 4 weeks + next 4 weeks
+      _addRecurringSessions(cn, 'Linux Lecture', 'Lab 1', [1, 3, 5], 10, 0, now);
     }
 
-    // 14:00 - 16:00 (Lab)
-    if (_selectedCourses.contains('Introduction to Python Programming')) {
-      _sessions.add(AcademicSession(title: 'Python Lab: Pandas', startTime: DateTime(now.year, now.month, now.day, 14, 0), endTime: DateTime(now.year, now.month, now.day, 16, 0), type: SessionType.classSession, location: 'Computer Lab 3', courseName: 'Introduction to Python Programming'));
-    } else if (_selectedCourses.contains('Introduction to Linux')) {
-      _sessions.add(AcademicSession(title: 'Linux Lab: Scripting', startTime: DateTime(now.year, now.month, now.day, 14, 0), endTime: DateTime(now.year, now.month, now.day, 16, 0), type: SessionType.classSession, location: 'Computer Lab 1', courseName: 'Introduction to Linux'));
-    } else {
-       _sessions.add(AcademicSession(title: 'Independent Study', startTime: DateTime(now.year, now.month, now.day, 14, 0), endTime: DateTime(now.year, now.month, now.day, 16, 0), type: SessionType.masterySession, location: 'Library'));
+    // ===================== PYTHON =====================
+    if (courses.any((c) => c.toLowerCase().contains('python'))) {
+      const cn = 'Introduction to Python Programming';
+      debugPrint('Seeding Python data...');
+
+      _assignments.addAll([
+        Assignment(title: 'Python Functions Quiz', courseName: cn, dueDate: now.add(const Duration(days: 1)), priority: PriorityLevel.high, type: AssignmentType.formative),
+        Assignment(title: 'Data Analysis Project', courseName: cn, dueDate: now.add(const Duration(days: 10)), priority: PriorityLevel.high, type: AssignmentType.summative),
+        Assignment(title: 'Pandas Library Intro', courseName: cn, dueDate: now.add(const Duration(days: 6)), priority: PriorityLevel.medium),
+        Assignment(title: 'NumPy Arrays Practice', courseName: cn, dueDate: now.add(const Duration(days: 3)), priority: PriorityLevel.low),
+        Assignment(title: 'Matplotlib Charts', courseName: cn, dueDate: now.add(const Duration(days: 14)), priority: PriorityLevel.medium, type: AssignmentType.formative),
+        Assignment(title: 'Web Scraping with BS4', courseName: cn, dueDate: now.add(const Duration(days: 8)), priority: PriorityLevel.high),
+        Assignment(title: 'Flask API Basics', courseName: cn, dueDate: now.add(const Duration(days: 16)), priority: PriorityLevel.medium, type: AssignmentType.summative),
+        Assignment(title: 'Unit Testing in Python', courseName: cn, dueDate: now.subtract(const Duration(days: 2)), priority: PriorityLevel.low),
+        Assignment(title: 'Asyncio Deep Dive', courseName: cn, dueDate: now.add(const Duration(days: 20)), priority: PriorityLevel.high),
+        Assignment(title: 'Django Models', courseName: cn, dueDate: now.add(const Duration(days: 25)), priority: PriorityLevel.medium),
+      ]);
+
+      // Sessions: Tue/Thu at 12:00
+      _addRecurringSessions(cn, 'Python Programming', 'Lab 3', [2, 4], 12, 0, now);
     }
-    
-    // 16:30 - 17:30
-    _sessions.add(AcademicSession(title: 'Peer Learning Circle', startTime: DateTime(now.year, now.month, now.day, 16, 30), endTime: DateTime(now.year, now.month, now.day, 17, 30), type: SessionType.masterySession, location: 'Breakout Room 4'));
 
-    
-    // Add some for future
-    _sessions.add(AcademicSession(title: 'Project Review', startTime: now.add(const Duration(days: 1)), endTime: now.add(const Duration(days: 1)).add(const Duration(hours: 1)), type: SessionType.masterySession, location: 'Zoom'));
-    _sessions.add(AcademicSession(title: 'Community Gathering', startTime: now.add(const Duration(days: 2)), endTime: now.add(const Duration(days: 2)).add(const Duration(hours: 1)), type: SessionType.classSession, location: 'Main Hall'));
+    // ===================== WEB DEV =====================
+    if (courses.any((c) => c.toLowerCase().contains('web'))) {
+      const cn = 'Front End Web Development';
+      debugPrint('Seeding Web Dev data...');
 
-    _saveData();
-    notifyListeners();
+      _assignments.addAll([
+        Assignment(title: 'HTML/CSS Portfolio', courseName: cn, dueDate: now.add(const Duration(days: 3)), priority: PriorityLevel.medium),
+        Assignment(title: 'JavaScript Basics', courseName: cn, dueDate: now.add(const Duration(days: 8)), priority: PriorityLevel.low, type: AssignmentType.formative),
+        Assignment(title: 'Responsive Design Lab', courseName: cn, dueDate: now.add(const Duration(days: 2)), priority: PriorityLevel.high),
+        Assignment(title: 'CSS Grid vs Flexbox', courseName: cn, dueDate: now.subtract(const Duration(days: 2)), priority: PriorityLevel.high),
+        Assignment(title: 'React Components', courseName: cn, dueDate: now.add(const Duration(days: 12)), priority: PriorityLevel.high, type: AssignmentType.summative),
+        Assignment(title: 'Accessibility Audit', courseName: cn, dueDate: now.add(const Duration(days: 5)), priority: PriorityLevel.medium, type: AssignmentType.formative),
+        Assignment(title: 'React State Management', courseName: cn, dueDate: now.add(const Duration(days: 15)), priority: PriorityLevel.high, type: AssignmentType.summative),
+        Assignment(title: 'Fetch API & JSON', courseName: cn, dueDate: now.add(const Duration(days: 10)), priority: PriorityLevel.medium),
+        Assignment(title: 'Tailwind CSS Project', courseName: cn, dueDate: now.add(const Duration(days: 18)), priority: PriorityLevel.low),
+        Assignment(title: 'Browser DevTools Quiz', courseName: cn, dueDate: now.subtract(const Duration(days: 5)), priority: PriorityLevel.low),
+      ]);
+
+      // Sessions: Mon/Wed at 14:00
+      _addRecurringSessions(cn, 'Front End Workshop', 'Room 204', [1, 3], 14, 0, now);
+    }
+
+    debugPrint('=== SEEDING COMPLETE: ${_assignments.length} assignments, ${_sessions.length} sessions ===');
+  }
+
+  /// Synchronous session generator — no async, no race conditions
+  void _addRecurringSessions(String courseName, String baseTitle, String location, List<int> daysOfWeek, int hour, int minute, DateTime now) {
+    // Past 4 weeks — with mixed attendance
+    for (int i = 1; i <= 28; i++) {
+       final date = now.subtract(Duration(days: i));
+       if (daysOfWeek.contains(date.weekday)) {
+           final isPresent = (date.day % 4 != 0); // ~75% attendance
+           _sessions.add(AcademicSession(
+             title: '$baseTitle (${date.day}/${date.month})',
+             startTime: DateTime(date.year, date.month, date.day, hour, minute),
+             endTime: DateTime(date.year, date.month, date.day, hour + 1, minute + 30),
+             type: SessionType.classSession,
+             location: location,
+             courseName: courseName,
+             isPresent: isPresent,
+           ));
+       }
+    }
+    // Today + next 4 weeks
+    for (int i = 0; i <= 28; i++) {
+       final date = now.add(Duration(days: i));
+       if (daysOfWeek.contains(date.weekday)) {
+           _sessions.add(AcademicSession(
+             title: '$baseTitle (${date.day}/${date.month})',
+             startTime: DateTime(date.year, date.month, date.day, hour, minute),
+             endTime: DateTime(date.year, date.month, date.day, hour + 1, minute + 30),
+             type: SessionType.classSession,
+             location: location,
+             courseName: courseName,
+           ));
+       }
+    }
   }
 
   Future<void> _saveData() async {
