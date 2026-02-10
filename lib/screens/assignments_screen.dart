@@ -95,14 +95,33 @@ class AssignmentsScreen extends StatelessWidget {
         List<Assignment> assignments;
         if (showMissed) {
           assignments = courseFiltered.where((a) => a.dueDate.isBefore(DateTime.now()) && !a.isCompleted).toList();
+        } else if (filterType == AssignmentType.all) {
+          // Show all assignments, but exclude any with invalid type 'all'
+          assignments = courseFiltered.where((a) => a.type != AssignmentType.all).toList();
         } else {
-          assignments = filterType == AssignmentType.all 
-              ? courseFiltered
-              : courseFiltered.where((a) => a.type == filterType).toList();
+          // Filter by specific type (formative or summative)
+          assignments = courseFiltered.where((a) => a.type == filterType).toList();
         }
 
-        assignments = List<Assignment>.from(assignments)
-          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+        // Advanced sorting: Completed items last, then by due date (soonest first)
+        assignments.sort((a, b) {
+          // Sort completed items to the bottom
+          if (a.isCompleted != b.isCompleted) {
+            return a.isCompleted ? 1 : -1;
+          }
+          
+          // For incomplete items, sort overdue items first
+          final now = DateTime.now();
+          final aOverdue = a.dueDate.isBefore(now) && !a.isCompleted;
+          final bOverdue = b.dueDate.isBefore(now) && !b.isCompleted;
+          
+          if (aOverdue != bOverdue) {
+            return aOverdue ? -1 : 1;
+          }
+          
+          // Finally sort by due date (soonest first)
+          return a.dueDate.compareTo(b.dueDate);
+        });
 
         if (assignments.isEmpty) {
           final emptyText = showMissed 
@@ -232,31 +251,6 @@ class AssignmentsScreen extends StatelessWidget {
           },
         );
       },
-    );
-  }
-
-  Widget _buildPriorityChip(PriorityLevel priority) {
-    Color color;
-    String label;
-    switch (priority) {
-      case PriorityLevel.high:
-        color = AppColors.danger;
-        label = 'High';
-        break;
-      case PriorityLevel.medium:
-        color = AppColors.warning;
-        label = 'Med';
-        break;
-      case PriorityLevel.low:
-        color = AppColors.success;
-        label = 'Low';
-        break;
-    }
-    return Chip(
-      label: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
-      backgroundColor: color,
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
     );
   }
 

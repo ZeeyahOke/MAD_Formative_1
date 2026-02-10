@@ -14,20 +14,17 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
-    final todaySessions = appState.getTodaysSessions()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    final todaySessions = appState.getTodaysSessions();
     final attendancePercent = appState.getAttendancePercentage();
     final pendingToDos = appState.getPendingAssignmentsCount();
-    final upcomingAssignments = appState.getAssignmentsDueNext7Days()
-      ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    final upcomingAssignments = appState.getAssignmentsDueNext7Days(); 
 
     // Map metrics to real data
     final activeProjects = pendingToDos.toString();
     final attendanceString = "${attendancePercent.toStringAsFixed(0)}%"; 
     
     // Upcoming Classes Logic
-    final upcomingClasses = appState.filteredSessions.where((s) => s.startTime.isAfter(DateTime.now())).toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    final upcomingClasses = appState.filteredSessions.where((s) => s.startTime.isAfter(DateTime.now())).toList();
     final upcomingClassesCount = upcomingClasses.length.toString();
 
     // Date formatting
