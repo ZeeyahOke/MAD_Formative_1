@@ -164,17 +164,61 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      TextField(
+                                           TextField(
                         controller: _emailController,
                         decoration: InputDecoration(
-                          hintText: 'student@alueducation.com',
+                          hintText: 'student@alustudent.com',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Colors.grey),
+                             borderSide: BorderSide(
+                              color: _emailErrorMessage != null
+                                  ? Colors.red
+                                  : Colors.grey,
+                            ),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: _emailErrorMessage != null
+                                  ? Colors.red
+                                  : Colors.grey,
+                              width: 1.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: _emailErrorMessage != null
+                                  ? Colors.red
+                                  : AppColors.primaryBlue,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          suffixIcon: _emailController.text.isNotEmpty
+                              ? _emailErrorMessage == null
+                                  ? const Icon(Icons.check_circle,
+                                      color: Colors.green)
+                                  : const Icon(Icons.error_outline,
+                                      color: Colors.red)
+                              : null,
                         ),
                       ),
+                      if (_emailErrorMessage != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            _emailErrorMessage!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 24),
 
                       // Course Selection
