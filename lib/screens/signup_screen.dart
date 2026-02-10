@@ -242,25 +242,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   height: 56,
                   child: ElevatedButton(
                     onPressed: () async {
-                      if (_emailController.text.isEmpty) {
-                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please enter your email')),
+                     // Validate the entire form before proceeding
+                      if (!_validateForm()) {
+                        return;
+                      }
+
+                      final email = _emailController.text.trim();
+                      // Final validation before signup (redundant but ensures correctness)
+                      if (!EmailValidator.isValidAluStudentEmail(email)) {
+                        _showErrorDialog(
+                          'Invalid Email',
+                          EmailValidator.getErrorMessage(email),
                         );
                         return;
                       }
                       
-                      if (_selectedCourses.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please select at least one course')),
-                        );
-                        return;
-                      }
-
-                      // Show loading indicator or visual feedback
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Creating your profile...')),
-                      );
-
                       final appState = Provider.of<AppState>(context, listen: false);
                       // Pass force:true to ensure data is regenerated fresh for the new user profile
                       await appState.setUser(_emailController.text, _selectedCourses.toList());
