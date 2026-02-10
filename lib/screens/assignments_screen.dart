@@ -18,10 +18,12 @@ class AssignmentsScreen extends StatelessWidget {
           title: const Text('Assignments'),
           backgroundColor: AppColors.primaryBlue,
           foregroundColor: Colors.white,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
+          leading: Navigator.canPop(context)
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.pop(context),
+                )
+              : null,
           bottom: const TabBar(
             indicatorColor: AppColors.accentYellow,
             labelColor: Colors.white,
@@ -95,9 +97,12 @@ class AssignmentsScreen extends StatelessWidget {
           assignments = courseFiltered.where((a) => a.dueDate.isBefore(DateTime.now()) && !a.isCompleted).toList();
         } else {
           assignments = filterType == AssignmentType.all 
-              ? courseFiltered 
+              ? courseFiltered
               : courseFiltered.where((a) => a.type == filterType).toList();
         }
+
+        assignments = List<Assignment>.from(assignments)
+          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
 
         if (assignments.isEmpty) {
           final emptyText = showMissed 

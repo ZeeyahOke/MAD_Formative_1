@@ -11,6 +11,7 @@ class AppState with ChangeNotifier {
   List<String> _selectedCourses = [];
   String? _filteredCourse; // Null means "All"
   bool _isLoaded = false; // Prevent race conditions
+  bool _userInitialized = false; // Guard against init overwrites
 
   List<Assignment> get assignments => List.unmodifiable(_assignments);
   List<AcademicSession> get sessions => List.unmodifiable(_sessions);
@@ -30,6 +31,10 @@ class AppState with ChangeNotifier {
 
   Future<void> _initData() async {
     final prefs = await SharedPreferences.getInstance();
+
+    if (_userInitialized) {
+      return;
+    }
     
     _username = prefs.getString('username') ?? 'Student';
     _selectedCourses = prefs.getStringList('courses') ?? [];
@@ -56,11 +61,38 @@ class AppState with ChangeNotifier {
       }
     }
 
+    _sortAssignments();
+    _sortSessions();
+
+    final shouldSeed = _selectedCourses.isNotEmpty && _assignments.isEmpty && _sessions.isEmpty;
+    if (shouldSeed) {
+      _generateAllSampleData();
+      _sortAssignments();
+      _sortSessions();
+      await _saveData();
+    }
+
     _isLoaded = true;
     notifyListeners();
   }
 
+  Future<void> signOut() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
+    _assignments = [];
+    _sessions = [];
+    _username = 'Student';
+    _selectedCourses = [];
+    _filteredCourse = null;
+    _isLoaded = false;
+    _userInitialized = false;
+
+    notifyListeners();
+  }
+
   Future<void> setUser(String email, List<String> courses) async {
+    _userInitialized = true;
     final prefs = await SharedPreferences.getInstance();
     // Extract name before @
     final namePart = email.split('@').first;

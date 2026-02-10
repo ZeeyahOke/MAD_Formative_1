@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/app_state.dart';
 import '../theme/colors.dart';
-import '../models/session.dart';
 
 class RiskStatusScreen extends StatelessWidget {
   const RiskStatusScreen({super.key});

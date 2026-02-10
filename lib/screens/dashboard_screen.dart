@@ -6,6 +6,7 @@ import '../theme/colors.dart';
 import 'schedule_screen.dart';
 import 'assignments_screen.dart';
 import 'risk_status_screen.dart';
+import 'signup_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -13,17 +14,20 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
-    final todaySessions = appState.getTodaysSessions();
+    final todaySessions = appState.getTodaysSessions()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
     final attendancePercent = appState.getAttendancePercentage();
     final pendingToDos = appState.getPendingAssignmentsCount();
-    final upcomingAssignments = appState.getAssignmentsDueNext7Days(); 
+    final upcomingAssignments = appState.getAssignmentsDueNext7Days()
+      ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
 
     // Map metrics to real data
     final activeProjects = pendingToDos.toString();
     final attendanceString = "${attendancePercent.toStringAsFixed(0)}%"; 
     
     // Upcoming Classes Logic
-    final upcomingClasses = appState.filteredSessions.where((s) => s.startTime.isAfter(DateTime.now())).toList();
+    final upcomingClasses = appState.filteredSessions.where((s) => s.startTime.isAfter(DateTime.now())).toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
     final upcomingClassesCount = upcomingClasses.length.toString();
 
     // Date formatting
@@ -40,9 +44,25 @@ class DashboardScreen extends StatelessWidget {
         centerTitle: true,
         elevation: 0,
         actions: [
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.person_outline),
-            onPressed: () {},
+            onSelected: (value) async {
+              if (value == 'sign_out') {
+                await appState.signOut();
+                if (context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                    (route) => false,
+                  );
+                }
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem<String>(
+                value: 'sign_out',
+                child: Text('Sign out'),
+              ),
+            ],
           ),
         ],
       ),
@@ -61,63 +81,66 @@ class DashboardScreen extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          currentDate,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            currentDate,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "Academic Week $academicWeek",
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            fontSize: 14,
+                          const SizedBox(height: 4),
+                          Text(
+                            "Academic Week $academicWeek",
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.8),
+                              fontSize: 14,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     // Course filter dropdown
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white30),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          dropdownColor: AppColors.primaryBlue,
-                          value: appState.filteredCourse,
-                          hint: const Text("All Selected Courses", style: TextStyle(color: Colors.white)),
-                          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                          isExpanded: false,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                          items: [
-                            const DropdownMenuItem<String>(
-                              value: null, 
-                              child: Text('All Selected Courses', style: TextStyle(color: Colors.white))
-                            ),
-                            ...appState.selectedCourses.map((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 150),
+                    SizedBox(
+                      width: 180,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.white30),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            dropdownColor: AppColors.primaryBlue,
+                            value: appState.filteredCourse,
+                            hint: const Text("All Selected Courses", style: TextStyle(color: Colors.white)),
+                            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                            isExpanded: true,
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text('All Selected Courses', style: TextStyle(color: Colors.white))
+                              ),
+                              ...appState.selectedCourses.map((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
                                 child: Text(
                                   value,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(color: Colors.white),
                                 ),
-                              ),
-                            );
-                          })], 
-                          onChanged: (newValue) {
-                             appState.setCourseFilter(newValue);
-                          },
+                              );
+                            })],
+                            onChanged: (newValue) {
+                               appState.setCourseFilter(newValue);
+                            },
+                          ),
                         ),
                       ),
                     ),
