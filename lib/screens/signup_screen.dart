@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../theme/colors.dart';
+import '../utils/email_validator.dart';
 import 'home_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final Set<String> _selectedCourses = {};
+    String? _emailErrorMessage;
 
   final List<String> _courses = [
     'Introduction to Linux',
@@ -21,6 +23,81 @@ class _SignUpScreenState extends State<SignUpScreen> {
     'Front End Web Development',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    // Add listener to validate email in real-time
+    _emailController.addListener(_validateEmail);
+  }
+
+  @override
+  void dispose() {
+    _emailController.removeListener(_validateEmail);
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  /// Validates the email input in real-time and updates error message.
+  void _validateEmail() {
+    setState(() {
+      final email = _emailController.text;
+      if (email.isEmpty) {
+        _emailErrorMessage = null; // No error shown while field is empty
+      } else if (EmailValidator.isValidAluStudentEmail(email)) {
+        _emailErrorMessage = null; // Valid email, no error
+      } else {
+        _emailErrorMessage = EmailValidator.getErrorMessage(email);
+      }
+    });
+  }
+
+  /// Validates all form inputs before signup.
+  bool _validateForm() {
+    final email = _emailController.text;
+
+    if (email.isEmpty) {
+      setState(() {
+        _emailErrorMessage = 'Email address is required';
+      });
+      return false;
+    }
+
+    // Validate email format and domain (client-side validation)
+    if (!EmailValidator.isValidAluStudentEmail(email)) {
+      setState(() {
+        _emailErrorMessage = EmailValidator.getErrorMessage(email);
+      });
+      return false;
+    }
+
+    // Validate that at least one course is selected
+    if (_selectedCourses.isEmpty) {
+      _showErrorDialog(
+        'Course Selection Required',
+        'Please select at least one course to continue.',
+      );
+      return false;
+    }
+    return true;
+  }
+
+  /// Shows an error dialog to the user.
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
