@@ -5,6 +5,8 @@ import '../providers/app_state.dart';
 import '../theme/colors.dart';
 import 'schedule_screen.dart';
 import 'assignments_screen.dart';
+import 'risk_status_screen.dart';
+import 'signup_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -15,12 +17,15 @@ class DashboardScreen extends StatelessWidget {
     final todaySessions = appState.getTodaysSessions();
     final attendancePercent = appState.getAttendancePercentage();
     final pendingToDos = appState.getPendingAssignmentsCount();
-    final upcomingAssignments = appState.getAssignmentsDueNext7Days();
+    final upcomingAssignments = appState.getAssignmentsDueNext7Days(); 
 
     // Map metrics to real data
     final activeProjects = pendingToDos.toString();
     final attendanceString = "${attendancePercent.toStringAsFixed(0)}%"; 
-    final upcomingCount = upcomingAssignments.length.toString();
+    
+    // Upcoming Classes Logic
+    final upcomingClasses = appState.filteredSessions.where((s) => s.startTime.isAfter(DateTime.now())).toList();
+    final upcomingClassesCount = upcomingClasses.length.toString();
 
     // Date formatting
     final now = DateTime.now();
@@ -36,9 +41,25 @@ class DashboardScreen extends StatelessWidget {
         centerTitle: true,
         elevation: 0,
         actions: [
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.person_outline),
-            onPressed: () {},
+            onSelected: (value) async {
+              if (value == 'sign_out') {
+                await appState.signOut();
+                if (context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                    (route) => false,
+                  );
+                }
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem<String>(
+                value: 'sign_out',
+                child: Text('Sign out'),
+              ),
+            ],
           ),
         ],
       ),
@@ -57,60 +78,66 @@ class DashboardScreen extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          currentDate,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            currentDate,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "Academic Week $academicWeek",
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            fontSize: 14,
+                          const SizedBox(height: 4),
+                          Text(
+                            "Academic Week $academicWeek",
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.8),
+                              fontSize: 14,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     // Course filter dropdown
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white30),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          dropdownColor: AppColors.primaryBlue,
-                          value: appState.filteredCourse ?? 'All Selected Courses',
-                          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                          isExpanded: false,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                          items: ['All Selected Courses', ...appState.selectedCourses]
-                              .map((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 150),
+                    SizedBox(
+                      width: 180,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.white30),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            dropdownColor: AppColors.primaryBlue,
+                            value: appState.filteredCourse,
+                            hint: const Text("All Selected Courses", style: TextStyle(color: Colors.white)),
+                            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                            isExpanded: true,
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text('All Selected Courses', style: TextStyle(color: Colors.white))
+                              ),
+                              ...appState.selectedCourses.map((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
                                 child: Text(
                                   value,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(color: Colors.white),
                                 ),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (newValue) {
-                            if (newValue != null) {
-                              appState.setCourseFilter(newValue);
-                            }
-                          },
+                              );
+                            })],
+                            onChanged: (newValue) {
+                               appState.setCourseFilter(newValue);
+                            },
+                          ),
                         ),
                       ),
                     ),
@@ -152,11 +179,38 @@ class DashboardScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
                 children: [
-                  _buildMetricBox(activeProjects, 'Pending\nTasks'),
+                  _buildMetricBox(
+                    activeProjects, 
+                    'Pending\nTasks',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const AssignmentsScreen()),
+                      );
+                    },
+                  ),
                   const SizedBox(width: 8),
-                  _buildMetricBox(attendanceString, 'Overall\nAttendance'), 
+                  _buildMetricBox(
+                    attendanceString, 
+                    'Overall\nAttendance', 
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const RiskStatusScreen()),
+                      );
+                    },
+                  ),
                   const SizedBox(width: 8),
-                  _buildMetricBox(upcomingCount, 'Due\nSoon'), 
+                  _buildMetricBox(
+                    upcomingClassesCount, 
+                    'Upcoming\nClasses',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ScheduleScreen(scrollToUpcoming: true)),
+                      );
+                    },
+                  ), 
                 ],
               ),
             ),
@@ -200,34 +254,78 @@ class DashboardScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     
-                    // Show 1st urgent assignment if any
+                    // Show UP TO 3 upcoming assignments
                     if (upcomingAssignments.isNotEmpty)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0,2))
-                          ],
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          title: Text(upcomingAssignments.first.title, style: const TextStyle(fontWeight: FontWeight.bold)), 
-                          subtitle: Text("Due ${DateFormat('MMM d').format(upcomingAssignments.first.dueDate)}"),
-                          leading: const Icon(Icons.assignment, color: AppColors.primaryBlue),
-                          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                          tileColor: AppColors.backgroundLight,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          onTap: () {
-                            Navigator.push(
-                               context,
-                               MaterialPageRoute(builder: (context) => const AssignmentsScreen()),
-                             );
-                          },
-                        ),
-                      ),
+                      Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                               Text("Upcoming Deadlines", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[700])),
+                               GestureDetector(
+                                 onTap: () {
+                                   Navigator.push(
+                                     context,
+                                     MaterialPageRoute(builder: (context) => const AssignmentsScreen()),
+                                   );
+                                 },
+                                 child: Text("(${upcomingAssignments.length}) See All", style: const TextStyle(color: AppColors.primaryBlue, fontSize: 12)),
+                               )
+                            ],
+                          ),
+                          const SizedBox(height: 8),
 
+                          ...upcomingAssignments.take(3).map((assignment) {
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                                boxShadow: [
+                                  BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0,2))
+                                ],
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                title: Text(assignment.title, style: const TextStyle(fontWeight: FontWeight.bold)), 
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(assignment.courseName, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "Due ${DateFormat('MMM d').format(assignment.dueDate)}",
+                                      style: TextStyle(
+                                        color: assignment.dueDate.difference(DateTime.now()).inDays < 2 
+                                            ? AppColors.danger 
+                                            : Colors.grey[600],
+                                        fontWeight: FontWeight.w500
+                                      )
+                                    ),
+                                  ],
+                                ),
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.backgroundLight,
+                                    shape: BoxShape.circle
+                                  ),
+                                  child: const Icon(Icons.assignment, color: AppColors.primaryBlue, size: 20),
+                                ),
+                                trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                                onTap: () {
+                                  Navigator.push(
+                                     context,
+                                     MaterialPageRoute(builder: (context) => const AssignmentsScreen()),
+                                   );
+                                },
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                      
                     // Display actual scheduled sessions
                     if (todaySessions.isEmpty)
                       const Padding(
@@ -235,17 +333,73 @@ class DashboardScreen extends StatelessWidget {
                         child: Text("No classes scheduled today", style: TextStyle(color: Colors.grey)),
                       ),
                     
-                    ...todaySessions.map((s) => Container(
+                    ...todaySessions.map((s) {
+                      final isPast = s.endTime.isBefore(DateTime.now());
+                      final isActive = !isPast && s.startTime.isBefore(DateTime.now());
+                      
+                      return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         tileColor: AppColors.backgroundLight,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        title: Text(s.title, style: const TextStyle(fontWeight: FontWeight.w500)),
-                        subtitle: Text('${DateFormat('HH:mm').format(s.startTime)} - ${s.location}'),
+                        leading: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              DateFormat('HH:mm').format(s.startTime),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            Text(
+                              DateFormat('HH:mm').format(s.endTime),
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                        title: Text(s.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (s.courseName != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2.0),
+                                child: Text(
+                                  s.courseName!, 
+                                  style: TextStyle(color: AppColors.primaryBlue.withValues(alpha: 0.8), fontSize: 12, fontWeight: FontWeight.w500)
+                                ),
+                              ),
+                             const SizedBox(height: 2),
+                             Row(
+                               children: [
+                                 const Icon(Icons.location_on, size: 12, color: Colors.grey),
+                                 const SizedBox(width: 4),
+                                 Expanded(child: Text(s.location, style: const TextStyle(fontSize: 12, color: Colors.grey))),
+                                 if (isActive)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.success,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text('NOW', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                                    )
+                                 else if (!isPast)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.accentYellow,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text('UPCOMING', style: TextStyle(color: AppColors.primaryBlue, fontSize: 9, fontWeight: FontWeight.bold)),
+                                    ),
+                               ],
+                             ),
+                          ],
+                        ),
                         trailing: Icon(s.isPresent ? Icons.check_circle : Icons.circle_outlined, 
                           color: s.isPresent ? AppColors.success : Colors.grey),
                       ),
-                    )),
+                    );
+                    }),
                     
                     const SizedBox(height: 24),
 
@@ -359,33 +513,36 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricBox(String number, String label) {
+  Widget _buildMetricBox(String number, String label, {VoidCallback? onTap}) {
     return Expanded(
-      child: Container(
-        height: 100,
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E2A47), 
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              number,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 100,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E2A47), 
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                number,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 10),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 10),
+              ),
+            ],
+          ),
         ),
       ),
     );
